@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SeismicLab — Earthquake Wave Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0c14;--surface:#111827;--surface2:#1f2937;--border:#374151;
+  --accent:#38bdf8;--accent2:#fb923c;
+  --pw:#38bdf8;--sw:#fb923c;--pcpw:#c084fc;--scsw:#f59e0b;--ppw:#86efac;--pp2w:#f9a8d4;
+  --text:#f1f5f9;--muted:#9ca3af;--dim:#cbd5e1;
+  --green:#4ade80;--red:#f87171;--warn:#fbbf24;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;overflow-x:hidden;font-size:15px;}
+
+header{border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:14px;background:rgba(10,12,20,.97);position:sticky;top:0;z-index:100;}
+.logo{width:34px;height:34px;border:2px solid var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;animation:pr 3s ease-in-out infinite;}
+.logo::after{content:'';width:9px;height:9px;background:var(--accent);border-radius:50%;box-shadow:0 0 10px var(--accent);}
+@keyframes pr{0%,100%{box-shadow:0 0 0 0 rgba(56,189,248,.4);}50%{box-shadow:0 0 0 8px rgba(56,189,248,0);}}
+.htitle{font-size:1.4rem;font-weight:800;letter-spacing:.04em;}
+.htitle span{color:var(--accent);}
+.hsub{font-family:'Space Mono',monospace;font-size:.72rem;color:var(--muted);margin-top:2px;}
+.hright{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;}
+.badge{background:var(--surface2);border:1px solid var(--border);padding:5px 12px;border-radius:12px;font-size:.75rem;font-family:'Space Mono',monospace;color:var(--muted);}
+.badge b{color:var(--accent);font-weight:400;}
+
+.layout{display:grid;grid-template-columns:320px 1fr;height:calc(100vh - 68px);}
+
+/* ── SIDEBAR ── */
+.sidebar{border-right:1px solid var(--border);overflow-y:auto;background:var(--surface);display:flex;flex-direction:column;}
+.sidebar::-webkit-scrollbar{width:4px;}.sidebar::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
+
+.panel{border-bottom:1px solid var(--border);}
+.ph{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:var(--surface2);user-select:none;transition:background .15s;}
+.ph:hover{background:#2d3748;}
+.pt{font-size:.78rem;font-family:'Space Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);display:flex;align-items:center;gap:8px;font-weight:700;}
+.sn{background:var(--accent);color:#0a0c14;font-size:.7rem;font-weight:700;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.chv{font-size:.75rem;color:var(--muted);transition:transform .2s;}
+.panel.collapsed .chv{transform:rotate(-90deg);}
+.panel.collapsed .pb{display:none;}
+.pb{padding:14px 16px;}
+
+label{display:block;font-size:.78rem;font-family:'Space Mono',monospace;color:var(--dim);margin-bottom:5px;letter-spacing:.04em;}
+input[type="text"],input[type="number"],select,input[type="date"]{
+  width:100%;background:#0d1117;border:1px solid var(--border);color:var(--text);
+  padding:8px 10px;border-radius:5px;font-size:.85rem;font-family:'Space Mono',monospace;
+  outline:none;transition:border-color .2s;margin-bottom:10px;appearance:none;
+}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(56,189,248,.15);}
+select option{background:#111827;}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.r2>div input,.r2>div select{margin-bottom:0;}
+.r2>div label{font-size:.72rem;}
+
+.rr{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.rr input[type="range"]{flex:1;margin-bottom:0;padding:0;accent-color:var(--accent);cursor:pointer;height:4px;}
+.rv{font-family:'Space Mono',monospace;font-size:.82rem;color:var(--accent);min-width:52px;text-align:right;font-weight:700;}
+
+.btn{width:100%;padding:10px;border-radius:5px;border:none;font-family:'Syne',sans-serif;font-weight:700;font-size:.9rem;cursor:pointer;transition:all .2s;letter-spacing:.03em;text-transform:uppercase;}
+.bp{background:var(--accent);color:#0a0c14;margin-top:4px;}
+.bp:hover{box-shadow:0 0 20px rgba(56,189,248,.5);transform:translateY(-1px);}
+.bp:disabled{background:var(--border);color:var(--muted);cursor:not-allowed;box-shadow:none;transform:none;}
+.bs{background:transparent;color:var(--accent);border:1px solid var(--accent);margin-top:6px;font-size:.85rem;}
+.bs:hover{background:rgba(56,189,248,.08);}
+.bs:disabled{opacity:.4;cursor:not-allowed;}
+.bg{background:var(--surface2);color:var(--text);border:1px solid var(--border);margin-bottom:10px;}
+.bg:hover{border-color:var(--dim);background:#2d3748;}
+
+.eql{max-height:210px;overflow-y:auto;border:1px solid var(--border);border-radius:5px;margin-bottom:10px;}
+.eql::-webkit-scrollbar{width:3px;}.eql::-webkit-scrollbar-thumb{background:var(--border);}
+.eqi{padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s;}
+.eqi:last-child{border-bottom:none;}
+.eqi:hover{background:rgba(56,189,248,.06);}
+.eqi.sel{background:rgba(56,189,248,.12);border-left:3px solid var(--accent);}
+.mag{font-family:'Space Mono',monospace;font-weight:700;font-size:1rem;margin-right:7px;color:var(--warn);}
+.eplace{color:var(--text);font-size:.85rem;}
+.emeta{color:var(--muted);font-size:.72rem;font-family:'Space Mono',monospace;margin-top:3px;}
+
+.wg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
+.wb{display:flex;align-items:center;gap:6px;padding:7px 9px;border-radius:4px;border:1px solid var(--border);cursor:pointer;font-size:.78rem;font-family:'Space Mono',monospace;transition:all .15s;user-select:none;}
+.wb.on{border-color:currentColor;background:rgba(255,255,255,.04);}
+.wb .dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0;}
+
+.tr{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;}
+.tl{font-size:.8rem;font-family:'Space Mono',monospace;color:var(--dim);}
+.sw{position:relative;width:32px;height:18px;flex-shrink:0;}
+.sw input{opacity:0;width:0;height:0;}
+.sl{position:absolute;inset:0;background:var(--border);border-radius:18px;cursor:pointer;transition:background .2s;}
+.sl:before{content:'';position:absolute;width:13px;height:13px;left:2.5px;top:2.5px;background:var(--muted);border-radius:50%;transition:transform .2s,background .2s;}
+.sw input:checked+.sl{background:rgba(56,189,248,.25);}
+.sw input:checked+.sl:before{transform:translateX(14px);background:var(--accent);}
+
+.cps{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;}
+.cp{padding:4px 9px;border-radius:4px;border:1px solid var(--border);font-size:.74rem;font-family:'Space Mono',monospace;cursor:pointer;transition:all .12s;color:var(--muted);user-select:none;}
+.cp.on{background:rgba(56,189,248,.12);border-color:var(--accent);color:var(--accent);}
+
+.nps{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;}
+.np{padding:5px 10px;border-radius:4px;border:1px solid var(--border);font-size:.78rem;font-family:'Space Mono',monospace;cursor:pointer;transition:all .12s;color:var(--muted);user-select:none;font-weight:700;}
+.np.on{background:rgba(56,189,248,.12);border-color:var(--accent);color:var(--accent);}
+
+.info{padding:8px 10px;background:rgba(56,189,248,.06);border:1px solid rgba(56,189,248,.2);border-radius:5px;font-size:.78rem;font-family:'Space Mono',monospace;color:var(--dim);line-height:1.6;margin-bottom:10px;}
+.note{font-size:.75rem;font-family:'Space Mono',monospace;color:var(--muted);line-height:1.55;padding:6px 9px;border-left:3px solid var(--border);margin-bottom:10px;}
+.note.tip{border-left-color:var(--warn);color:var(--warn);}
+.eqc{font-size:.74rem;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:8px;}
+.sb2{display:inline-block;background:rgba(56,189,248,.15);color:var(--accent);border-radius:8px;padding:1px 8px;font-size:.7rem;font-family:'Space Mono',monospace;margin-left:6px;}
+
+.sbar{padding:8px 16px;font-family:'Space Mono',monospace;font-size:.74rem;color:var(--muted);background:#0d1117;border-top:1px solid var(--border);display:flex;align-items:center;gap:7px;margin-top:auto;}
+.sd{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+.sd.ok{background:var(--green);box-shadow:0 0 6px var(--green);}
+.sd.busy{background:var(--warn);animation:blink .8s infinite;}
+.sd.err{background:var(--red);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── MAIN ── */
+.main{display:flex;flex-direction:column;overflow:hidden;}
+.tb{padding:10px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--surface);flex-shrink:0;}
+.ti{flex:1;min-width:0;}
+.tt{font-size:.92rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tm{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--muted);margin-top:2px;}
+.tbs{display:flex;gap:6px;flex-shrink:0;}
+.ib{background:var(--surface2);border:1px solid var(--border);color:var(--dim);padding:6px 11px;border-radius:4px;cursor:pointer;font-size:.76rem;font-family:'Space Mono',monospace;transition:all .15s;white-space:nowrap;font-weight:700;}
+.ib:hover{border-color:var(--accent);color:var(--accent);}
+.ib.on{border-color:var(--accent);color:var(--accent);background:rgba(56,189,248,.08);}
+
+.cw{flex:1;position:relative;overflow:hidden;}
+canvas{display:block;width:100%;height:100%;}
+
+.es{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;pointer-events:none;}
+.es.hidden{display:none;}
+.sa{width:180px;height:36px;position:relative;overflow:hidden;}
+.sl2{position:absolute;top:50%;left:0;width:200%;height:1px;background:repeating-linear-gradient(90deg,transparent 0,transparent 10px,var(--border) 10px,var(--border) 20px);animation:sl3 3s linear infinite;}
+@keyframes sl3{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.es h2{font-size:1.1rem;color:var(--dim);font-weight:600;}
+.es p{font-size:.82rem;font-family:'Space Mono',monospace;color:var(--muted);text-align:center;max-width:300px;line-height:1.7;}
+
+.lo{position:absolute;inset:0;background:rgba(10,12,20,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:20;backdrop-filter:blur(4px);}
+.lo.hidden{display:none;}
+.sp{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.lt{font-family:'Space Mono',monospace;font-size:.82rem;color:var(--dim);text-align:center;max-width:320px;line-height:1.5;}
+.lp{width:220px;height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+.lb{height:100%;background:var(--accent);width:0%;transition:width .3s;box-shadow:0 0 8px var(--accent);}
+.ll{font-family:'Space Mono',monospace;font-size:.72rem;color:var(--muted);text-align:center;max-height:90px;overflow:hidden;width:340px;}
+.ll .ok{color:var(--green);}
+.ll .fail{color:var(--red);opacity:.8;}
+
+.et{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);background:rgba(248,113,113,.14);border:1px solid var(--red);color:var(--red);padding:10px 20px;border-radius:5px;font-family:'Space Mono',monospace;font-size:.78rem;z-index:30;max-width:500px;text-align:center;line-height:1.5;}
+.et.hidden{display:none;}
+
+.leg{position:absolute;bottom:14px;right:14px;background:rgba(17,24,39,.96);border:1px solid var(--border);border-radius:6px;padding:10px 14px;backdrop-filter:blur(6px);z-index:10;font-family:'Space Mono',monospace;font-size:.74rem;}
+.leg.hidden{display:none;}
+.lgt{color:var(--muted);letter-spacing:.06em;text-transform:uppercase;font-size:.66rem;margin-bottom:6px;font-weight:700;}
+.li{display:flex;align-items:center;gap:7px;margin-bottom:4px;}
+.ll2{width:20px;height:2px;border-radius:1px;flex-shrink:0;}
+
+.xh{position:absolute;top:6px;left:60px;font-family:'Space Mono',monospace;font-size:.72rem;color:var(--dim);pointer-events:none;z-index:5;background:rgba(10,12,20,.85);padding:3px 8px;border-radius:3px;}
+.xh.hidden{display:none;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"></div>
+  <div>
+    <h1 class="htitle">Seismic<span>Lab</span></h1>
+    <div class="hsub">Real Earthquake Waveform Explorer — No Installation Required</div>
+  </div>
+  <div class="hright">
+    <div class="badge">Waveforms: <b>Raspberry Shake FDSNWS</b></div>
+    <div class="badge">Catalog: <b>USGS ComCat</b></div>
+    <div class="badge">Travel Times: <b>IASP91</b></div>
+  </div>
+</header>
+
+<div class="layout">
+<aside class="sidebar">
+
+  <div class="panel" id="p1">
+    <div class="ph" onclick="tp('p1')">
+      <div class="pt"><span class="sn">1</span>Find Earthquake</div>
+      <span class="chv">▾</span>
+    </div>
+    <div class="pb">
+      <div class="info">Search the USGS catalog. For best results use M ≥ 6.5 and shallow depth (&lt; 100 km).</div>
+      <label>Start Date</label><input type="date" id="d0" value="2020-01-01">
+      <label>End Date</label><input type="date" id="d1" value="2020-12-31">
+      <label>Min Magnitude</label>
+      <div class="rr"><input type="range" id="mmin" min="6.0" max="9.0" step="0.1" value="6.5" oninput="G('mmv').textContent=this.value"><div class="rv" id="mmv">6.5</div></div>
+      <label>Max Depth (km)</label>
+      <div class="rr"><input type="range" id="dmax" min="10" max="700" step="10" value="100" oninput="G('dmv').textContent=this.value"><div class="rv" id="dmv">100</div></div>
+      <button class="btn bg" onclick="searchEQ()">⌕ Search USGS Catalog</button>
+      <div class="eqc" id="eqc"></div>
+      <div class="eql" id="eql"><div style="padding:18px;text-align:center;color:var(--muted);font-size:.8rem;font-family:'Space Mono',monospace">Click Search to load earthquakes</div></div>
+      <div id="eqdw" style="display:none"><div class="info" id="eqd"></div></div>
+    </div>
+  </div>
+
+  <div class="panel" id="p2">
+    <div class="ph" onclick="tp('p2')">
+      <div class="pt"><span class="sn" style="background:var(--accent2)">2</span>Station Selection</div>
+      <span class="chv">▾</span>
+    </div>
+    <div class="pb">
+      <div class="info">AM = Raspberry Shake (community network, ~1000 global stations). Data comes directly from their public server.</div>
+      <label>Networks</label>
+      <div class="nps">
+        <div class="np on" onclick="tnet(this,'AM')" title="Raspberry Shake ~1000 stations">AM</div>
+        <div class="np on" onclick="tnet(this,'IU')" title="Global Seismograph Network">IU</div>
+        <div class="np on" onclick="tnet(this,'II')" title="IRIS/IDA broadband">II</div>
+        <div class="np" onclick="tnet(this,'GE')" title="GEOFON (Germany) — CORS friendly">GE</div>
+        <div class="np" onclick="tnet(this,'HL')" title="National Observatory of Athens">HL</div>
+      </div>
+      <div class="note">AM = Raspberry Shake (community). IU/II = professional broadband. All routed via proxy.</div>
+      <label>Distance Range (degrees)</label>
+      <div class="r2"><div><label>Min °</label><input type="number" id="dmin" value="5" min="0" max="89"></div><div><label>Max °</label><input type="number" id="dmx" value="90" min="5" max="180"></div></div>
+      <label>Max Stations <span class="sb2" id="stb">—</span></label>
+      <div class="rr"><input type="range" id="nst" min="10" max="60" step="5" value="30" oninput="G('nstv').textContent=this.value"><div class="rv" id="nstv">30</div></div>
+      <label>Channel Priority</label>
+      <div class="cps">
+        <div class="cp on" onclick="tch(this,'EHZ')">EHZ</div>
+        <div class="cp on" onclick="tch(this,'BHZ')">BHZ</div>
+        <div class="cp on" onclick="tch(this,'HHZ')">HHZ</div>
+        <div class="cp" onclick="tch(this,'SHZ')">SHZ</div>
+        <div class="cp" onclick="tch(this,'EHE')">EHE</div>
+        <div class="cp" onclick="tch(this,'EHN')">EHN</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="p3">
+    <div class="ph" onclick="tp('p3')">
+      <div class="pt"><span class="sn" style="background:#4ade80;color:#0a0c14">3</span>Signal Processing</div>
+      <span class="chv">▾</span>
+    </div>
+    <div class="pb">
+      <div class="info">Bandpass filter keeps only the frequencies you choose. 0.4–5.0 Hz is standard for teleseismic P and S waves.</div>
+      <label>Freq Min (Hz)</label>
+      <div class="rr"><input type="range" id="fmin" min="0.05" max="2.0" step="0.05" value="0.4" oninput="G('fminv').textContent=parseFloat(this.value).toFixed(2)+'Hz'"><div class="rv" id="fminv">0.40Hz</div></div>
+      <label>Freq Max (Hz)</label>
+      <div class="rr"><input type="range" id="fmax" min="1.0" max="10.0" step="0.1" value="5.0" oninput="G('fmaxv').textContent=parseFloat(this.value).toFixed(1)+'Hz'"><div class="rv" id="fmaxv">5.0Hz</div></div>
+      <label>Filter Corners</label>
+      <select id="corn"><option value="2">2 — gentle</option><option value="4" selected>4 — standard</option><option value="6">6 — steep</option></select>
+      <div class="tr"><span class="tl">Normalize traces</span><label class="sw"><input type="checkbox" id="norm" checked><span class="sl"></span></label></div>
+      <div class="tr"><span class="tl">Cosine taper (5%)</span><label class="sw"><input type="checkbox" id="tap" checked><span class="sl"></span></label></div>
+      <div class="tr"><span class="tl">Detrend + demean</span><label class="sw"><input type="checkbox" id="det" checked><span class="sl"></span></label></div>
+      <label>Window Duration (seconds)</label>
+      <input type="number" id="twin" value="900" min="120" max="3600">
+    </div>
+  </div>
+
+  <div class="panel" id="p4">
+    <div class="ph" onclick="tp('p4')">
+      <div class="pt"><span class="sn" style="background:#c084fc;color:#0a0c14">4</span>Wave Phase Overlays</div>
+      <span class="chv">▾</span>
+    </div>
+    <div class="pb">
+      <div class="info">Toggle theoretical IASP91 arrival time curves. Compare them to the actual wiggles in the data!</div>
+      <div class="wg">
+        <div class="wb on" style="color:var(--pw)" id="wb-P" onclick="tw(this,'P')"><div class="dot"></div>P wave</div>
+        <div class="wb on" style="color:var(--sw)" id="wb-S" onclick="tw(this,'S')"><div class="dot"></div>S wave</div>
+        <div class="wb" style="color:var(--pcpw)" id="wb-PcP" onclick="tw(this,'PcP')"><div class="dot"></div>PcP</div>
+        <div class="wb" style="color:var(--scsw)" id="wb-ScS" onclick="tw(this,'ScS')"><div class="dot"></div>ScS</div>
+        <div class="wb" style="color:var(--ppw)" id="wb-PP" onclick="tw(this,'PP')"><div class="dot"></div>PP</div>
+        <div class="wb" style="color:var(--pp2w)" id="wb-pP" onclick="tw(this,'pP')"><div class="dot"></div>pP</div>
+      </div>
+      <div class="note tip">💡 PcP and ScS bounce off the core-mantle boundary (~2891 km deep). Look for them at 30°–70°.</div>
+    </div>
+  </div>
+
+  <div class="panel" id="p5">
+    <div class="ph" onclick="tp('p5')">
+      <div class="pt"><span class="sn" style="background:#4ade80;color:#0a0c14">5</span>Generate Plot</div>
+      <span class="chv">▾</span>
+    </div>
+    <div class="pb">
+      <div class="note" id="prereq">Select an earthquake first (Step 1).</div>
+      <button class="btn bp" id="plotbtn" onclick="generatePlot()" disabled>▶ Generate Section Plot</button>
+      <button class="btn bs" id="expbtn" onclick="exportPlot()" disabled>↓ Export PNG</button>
+    </div>
+  </div>
+
+  <div class="sbar"><div class="sd" id="sdot"></div><span id="stxt">Ready — search for an earthquake to begin</span></div>
+</aside>
+
+<main class="main">
+  <div class="tb">
+    <div class="ti">
+      <div class="tt" id="ptitle">No data loaded</div>
+      <div class="tm" id="pmeta">Waiting for input</div>
+    </div>
+    <div class="tbs">
+      <button class="ib on" id="bsec" onclick="setView('section')">SECTION</button>
+      <button class="ib" id="bover" onclick="setView('overlay')">OVERLAY</button>
+      <button class="ib" onclick="exportPlot()">↓ PNG</button>
+    </div>
+  </div>
+  <div class="cw">
+    <canvas id="C"></canvas>
+    <div class="es" id="es">
+      <div class="sa"><div class="sl2"></div></div>
+      <h2>No seismogram loaded</h2>
+      <p>Follow Steps 1–5 in the sidebar to load real earthquake waveforms.</p>
+    </div>
+    <div class="lo hidden" id="loader">
+      <div class="sp"></div>
+      <div class="lt" id="ltxt">Loading...</div>
+      <div class="lp"><div class="lb" id="lbar"></div></div>
+      <div class="ll" id="llog"></div>
+    </div>
+    <div class="xh hidden" id="xh"></div>
+    <div class="leg hidden" id="legend">
+      <div class="lgt">Wave Phases (IASP91)</div>
+      <div class="li"><div class="ll2" style="background:var(--pw)"></div><span style="color:var(--pw)">P — direct P wave</span></div>
+      <div class="li"><div class="ll2" style="background:var(--sw)"></div><span style="color:var(--sw)">S — direct S wave</span></div>
+      <div class="li"><div class="ll2" style="background:var(--pcpw)"></div><span style="color:var(--pcpw)">PcP — core-mantle reflection P</span></div>
+      <div class="li"><div class="ll2" style="background:var(--scsw)"></div><span style="color:var(--scsw)">ScS — core-mantle reflection S</span></div>
+      <div class="li"><div class="ll2" style="background:var(--ppw)"></div><span style="color:var(--ppw)">PP — surface reflected P</span></div>
+      <div class="li"><div class="ll2" style="background:var(--pp2w)"></div><span style="color:var(--pp2w)">pP — depth phase</span></div>
+    </div>
+    <div class="et hidden" id="etost"></div>
+  </div>
+</main>
+</div>
+
+<script>
+'use strict';
+
+// ── ENDPOINTS ────────────────────────────────────────────────
+// All requests routed through Cloudflare proxy to solve CORS
+const PROXY    = 'https://seismic-proxy.geology-classroom101.workers.dev/?url=';
+const RS_BASE  = 'https://data.raspberryshake.org/fdsnws';
+const IRIS_BASE= 'https://service.iris.edu/fdsnws';
+const GE_BASE  = 'https://geofon.gfz-potsdam.de/fdsnws';
+const USGS_CAT = 'https://earthquake.usgs.gov/fdsnws/event/1/query';
+
+// Wrap any URL through the proxy
+function proxied(url) { return PROXY + encodeURIComponent(url); }
+
+// Map each network code to the right FDSN server
+function baseFor(net) {
+  if (net === 'AM') return RS_BASE;
+  if (net === 'GE' || net === 'HL') return GE_BASE;
+  return IRIS_BASE; // IU, II, GT, IC
+}
+
+// ── STATE ────────────────────────────────────────────────────
+const S = {
+  eqs:[], eq:null, wfs:[],
+  aw:{P:true,S:true,PcP:false,ScS:false,PP:false,pP:false},
+  nets:new Set(['AM','IU','II']),
+  chs:new Set(['EHZ','BHZ','HHZ']),
+  view:'section', ready:false, tEnd:900
+};
+
+// ── IASP91 TRAVEL TIME TABLES ────────────────────────────────
+const P0=[0,7.6,15.2,22.8,30.4,38.0,45.5,52.9,60.2,67.4,74.5,81.4,88.1,94.6,100.9,107.0,112.8,118.5,124.0,129.2,134.3,139.2,143.9,148.5,153.0,157.3,161.5,165.6,169.6,173.5,177.3,181.1,184.8,188.4,191.9,195.4,198.8,202.2,205.5,208.7,211.9,215.0,218.1,221.1,224.1,227.1,230.0,232.9,235.7,238.5,241.3,244.0,246.7,249.4,252.1,254.7,257.3,259.9,262.4,264.9,267.4,269.9,272.4,274.8,277.2,279.6,282.0,284.3,286.6,288.9,291.2,293.5,295.7,297.9,300.1,302.3,304.5,306.7,308.8,311.0,313.1,315.2,317.3,319.4,321.5,323.5,325.6,327.6,329.7,331.7];
+const S0=[0,13.7,27.4,41.1,54.8,68.3,81.7,95.0,108.1,121.1,133.9,146.6,159.0,171.2,183.2,195.0,206.5,217.8,228.9,239.7,250.3,260.7,270.8,280.7,290.4,299.9,309.1,318.2,327.0,335.6,344.0,352.2,360.2,368.0,375.6,383.1,390.3,397.4,404.3,411.1,417.7,424.1,430.4,436.6,442.6,448.5,454.3,460.0,465.5,470.9,476.2,481.4,486.5,491.5,496.4,501.3,506.0,510.7,515.3,519.8,524.3,528.7,533.0,537.3,541.5,545.7,549.8,553.9,557.9,561.8,565.7,569.6,573.4,577.2,580.9,584.6,588.3,591.9,595.5,599.1,602.6,606.1,609.6,613.0,616.4,619.8,623.1,626.4,629.7,632.9];
+const PCP_D=[0,5,10,15,20,25,30,35,40,45,50,55,60,65,70];
+const PCP_T=[488,490,493,497,501,506,511,516,522,527,533,539,545,551,557];
+const SCS_D=[0,5,10,15,20,25,30,35,40,45,50,55,60,65,70];
+const SCS_T=[890,894,897,902,908,916,924,933,942,952,962,972,982,992,1002];
+
+function interp(xs,ys,x){
+  if(x<=xs[0])return ys[0];
+  if(x>=xs[xs.length-1])return ys[ys.length-1];
+  for(let i=0;i<xs.length-1;i++)
+    if(xs[i]<=x&&xs[i+1]>=x){const f=(x-xs[i])/(xs[i+1]-xs[i]);return ys[i]*(1-f)+ys[i+1]*f;}
+  return null;
+}
+function getTT(ph,deg,depth){
+  if(deg<0)return null; depth=depth||0;
+  const dc=depth/8.0;
+  const d0=Math.max(0,Math.min(deg,89));
+  const lo=Math.floor(d0),hi=Math.min(lo+1,89),f=d0-lo;
+  if(ph==='P'){if(deg>90)return null;return P0[lo]*(1-f)+P0[hi]*f+dc;}
+  if(ph==='S'){if(deg>90)return null;return S0[lo]*(1-f)+S0[hi]*f+dc*1.73;}
+  if(ph==='PcP'){if(deg>70)return null;return interp(PCP_D,PCP_T,deg);}
+  if(ph==='ScS'){if(deg>70)return null;return interp(SCS_D,SCS_T,deg);}
+  if(ph==='PP'){if(deg<20||deg>170)return null;const h=Math.min(deg/2,44);const l=Math.floor(h);return(P0[l]*(1-(h-l))+P0[Math.min(l+1,89)]*(h-l))*2.05+dc;}
+  if(ph==='pP'){const p=getTT('P',deg,0);return p?p+2*depth/6.5:null;}
+  return null;
+}
+
+// ── HELPERS ──────────────────────────────────────────────────
+const G = id => document.getElementById(id);
+function setSt(t,type=''){
+  G('stxt').textContent=t;
+  const d=G('sdot');d.className='sd';
+  if(type==='ok')d.classList.add('ok');
+  else if(type==='busy')d.classList.add('busy');
+  else if(type==='err')d.classList.add('err');
+}
+function showErr(m){const t=G('etost');t.textContent=m;t.classList.remove('hidden');setTimeout(()=>t.classList.add('hidden'),10000);}
+function setP(p,l){G('lbar').style.width=p+'%';G('ltxt').textContent=l;}
+function log(m,c=''){
+  console.log(m);
+  const el=document.createElement('div');el.className=c;el.textContent=m;
+  const lg=G('llog');lg.appendChild(el);
+  while(lg.children.length>6)lg.removeChild(lg.firstChild);
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function hav(a1,o1,a2,o2){
+  const R=6371,dL=(a2-a1)*Math.PI/180,dO=(o2-o1)*Math.PI/180;
+  const a=Math.sin(dL/2)**2+Math.cos(a1*Math.PI/180)*Math.cos(a2*Math.PI/180)*Math.sin(dO/2)**2;
+  return 2*R*Math.asin(Math.sqrt(a))/111.19;
+}
+function tp(id){G(id).classList.toggle('collapsed');}
+function tw(el,ph){S.aw[ph]=!S.aw[ph];el.classList.toggle('on',S.aw[ph]);if(S.ready)draw();}
+function tnet(el,n){el.classList.toggle('on');S.nets.has(n)?S.nets.delete(n):S.nets.add(n);}
+function tch(el,c){el.classList.toggle('on');S.chs.has(c)?S.chs.delete(c):S.chs.add(c);}
+function setView(m){S.view=m;G('bsec').classList.toggle('on',m==='section');G('bover').classList.toggle('on',m==='overlay');if(S.ready)draw();}
+
+// ── STEP 1: SEARCH ───────────────────────────────────────────
+async function searchEQ(){
+  setSt('Searching USGS...','busy');
+  const p=new URLSearchParams({
+    format:'geojson',
+    starttime:G('d0').value,
+    endtime:G('d1').value,
+    minmagnitude:G('mmin').value,
+    maxdepth:G('dmax').value,
+    orderby:'magnitude',
+    limit:50
+  });
+  try{
+    const r=await fetch(proxied(`${USGS_CAT}?${p}`));
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const data=await r.json();
+    S.eqs=data.features;
+    renderEQs();
+    G('eqc').textContent=`${S.eqs.length} events found`;
+    setSt(`Found ${S.eqs.length} earthquakes`,'ok');
+  }catch(e){setSt('Search failed','err');showErr('USGS search error: '+e.message);}
+}
+
+function renderEQs(){
+  const l=G('eql');
+  if(!S.eqs.length){l.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);font-size:.8rem;">No results</div>';return;}
+  l.innerHTML=S.eqs.map((eq,i)=>{
+    const p=eq.properties,c=eq.geometry.coordinates;
+    const d=new Date(p.time),ds=d.toISOString().slice(0,19).replace('T',' ');
+    return `<div class="eqi" onclick="selEQ(${i})">
+      <span class="mag">M${p.mag.toFixed(1)}</span><span class="eplace">${p.place}</span>
+      <div class="emeta">${ds} UTC · ${c[2].toFixed(0)} km deep</div>
+    </div>`;
+  }).join('');
+}
+
+function selEQ(i){
+  S.eq=S.eqs[i];
+  const p=S.eq.properties,c=S.eq.geometry.coordinates;
+  document.querySelectorAll('.eqi').forEach((el,j)=>el.classList.toggle('sel',j===i));
+  const d=new Date(p.time),ds=d.toISOString().slice(0,19).replace('T',' ');
+  G('eqd').innerHTML=`<strong style="color:var(--accent)">${p.place}</strong><br>M${p.mag.toFixed(1)} ${p.magType} · ${ds} UTC<br>lat ${c[1].toFixed(3)} lon ${c[0].toFixed(3)} · depth ${c[2].toFixed(1)} km`;
+  G('eqdw').style.display='block';
+  G('prereq').style.display='none';
+  G('plotbtn').disabled=false;
+  G('ptitle').textContent=`M${p.mag.toFixed(1)} — ${p.place}`;
+  G('pmeta').textContent=`${ds} UTC | lat:${c[1].toFixed(3)} lon:${c[0].toFixed(3)} | depth:${c[2].toFixed(1)} km`;
+  setSt(`Selected M${p.mag.toFixed(1)} ${p.place}`,'ok');
+}
+
+// ── STEP 5: GENERATE ─────────────────────────────────────────
+async function generatePlot(){
+  if(!S.eq){showErr('Select an earthquake first.');return;}
+  G('loader').classList.remove('hidden');
+  G('es').classList.add('hidden');
+  G('llog').innerHTML='';
+  setSt('Fetching stations...','busy');
+
+  try{
+    const c=S.eq.geometry.coordinates;
+    const eqLat=c[1],eqLon=c[0],eqDepth=c[2];
+    const eqTime=new Date(S.eq.properties.time);
+    const dur=parseInt(G('twin').value);
+    const distMin=parseFloat(G('dmin').value);
+    const distMax=parseFloat(G('dmx').value);
+    const maxSta=parseInt(G('nst').value);
+    const chs=[...S.chs];
+    const chStr=chs.join(',');
+    const t0=eqTime.toISOString().slice(0,19);
+    const t1=new Date(eqTime.getTime()+dur*1000).toISOString().slice(0,19);
+
+    console.log('=== SeismicLab Debug ===');
+    console.log('EQ:', S.eq.properties.place, '| time:', t0, '| depth:', eqDepth);
+    console.log('Networks:', [...S.nets].join(','), '| channels:', chStr);
+    console.log('Distance:', distMin, '–', distMax, '° | duration:', dur, 's');
+
+    // ── Fetch stations ────────────────────────────────────
+    setP(5,'Fetching station list...');
+    let stations=[];
+
+    for(const net of S.nets){
+      const base=baseFor(net);
+      const url=`${base}/station/1/query?net=${net}&sta=*&cha=${chStr}&level=station&format=text&startbefore=${t0}&endafter=${t1}&latitude=${eqLat}&longitude=${eqLon}&minradius=${distMin}&maxradius=${distMax}&nodata=404`;
+      console.log('Station query:', url);
+      try{
+        const r=await fetch(proxied(url),{signal:AbortSignal.timeout(25000)});
+        console.log('Station response status:', net, r.status, r.statusText);
+        if(r.ok){
+          const txt=await r.text();
+          console.log('Station text (first 300 chars):', txt.slice(0,300));
+          const s=parseStnTxt(txt,eqLat,eqLon,net,base);
+          stations.push(...s);
+          log(`${net}: ${s.length} stations found`,'ok');
+        }else{
+          log(`${net}: server returned ${r.status}`,'fail');
+        }
+      }catch(e){
+        console.log('Station fetch error:', net, e.message);
+        log(`${net}: ${e.message}`,'fail');
+      }
+    }
+
+    if(!stations.length){
+      throw new Error('No stations found. The Raspberry Shake network (AM) may not have stations near this earthquake. Try a different earthquake location or widen the distance range to 0°–90°.');
+    }
+
+    // Deduplicate, sort, sample evenly
+    const seen=new Set();
+    stations=stations.filter(s=>{const k=`${s.net}.${s.code}`;if(seen.has(k))return false;seen.add(k);return true;});
+    stations.sort((a,b)=>a.dist-b.dist);
+    console.log(`Total unique stations: ${stations.length}`);
+    if(stations.length>maxSta){
+      const step=stations.length/maxSta;
+      stations=Array.from({length:maxSta},(_,i)=>stations[Math.floor(i*step)]);
+    }
+    G('stb').textContent=stations.length;
+    setP(15,`${stations.length} stations found. Fetching waveforms...`);
+
+    // ── Fetch waveforms ───────────────────────────────────
+    S.wfs=[];
+    const fMin=parseFloat(G('fmin').value);
+    const fMax=parseFloat(G('fmax').value);
+    const corners=parseInt(G('corn').value);
+    const doNorm=G('norm').checked,doTap=G('tap').checked,doDet=G('det').checked;
+    const BATCH=4;
+
+    for(let i=0;i<stations.length;i+=BATCH){
+      const batch=stations.slice(i,i+BATCH);
+      setP(15+Math.round((i/stations.length)*80),`Waveforms ${i+1}–${Math.min(i+BATCH,stations.length)} / ${stations.length}`);
+      const res=await Promise.allSettled(
+        batch.map(st=>fetchWave(st,chs,t0,t1,fMin,fMax,corners,doNorm,doTap,doDet,dur))
+      );
+      res.forEach((r,j)=>{
+        const st=batch[j];
+        if(r.status==='fulfilled'&&r.value){
+          S.wfs.push(r.value);
+          log(`✓ ${st.net}.${st.code} (${st.dist.toFixed(1)}°)`,'ok');
+        }else{
+          log(`✗ ${st.net}.${st.code}`,'fail');
+        }
+      });
+    }
+
+    if(!S.wfs.length){
+      throw new Error(`Found ${stations.length} stations but no waveforms loaded. The stations may not have recorded this earthquake, or the data window may be incorrect. Try a larger earthquake (M7+) or adjust the time window.`);
+    }
+
+    S.wfs.sort((a,b)=>a.dist-b.dist);
+    S.tEnd=dur; S.ready=true;
+    setP(100,`Rendering ${S.wfs.length} traces...`);
+    await sleep(200);
+    G('loader').classList.add('hidden');
+    G('legend').classList.remove('hidden');
+    G('expbtn').disabled=false;
+    draw();
+    setSt(`✓ ${S.wfs.length} stations plotted`,'ok');
+
+  }catch(e){
+    G('loader').classList.add('hidden');
+    G('es').classList.remove('hidden');
+    showErr(e.message);
+    setSt('Error — see message on screen','err');
+    console.error('generatePlot error:', e);
+  }
+}
+
+function parseStnTxt(txt,eqLat,eqLon,net,base){
+  const out=[];
+  txt.split('\n').forEach(l=>{
+    if(!l||l.startsWith('#'))return;
+    const p=l.split('|');if(p.length<4)return;
+    const code=p[1].trim(),lat=parseFloat(p[2]),lon=parseFloat(p[3]);
+    if(isNaN(lat)||isNaN(lon))return;
+    out.push({net,code,lat,lon,dist:hav(eqLat,eqLon,lat,lon),base});
+  });
+  return out;
+}
+
+async function fetchWave(sta,chs,t0,t1,fMin,fMax,corners,doNorm,doTap,doDet,dur){
+  for(const ch of chs){
+    try{
+      const url=`${sta.base}/dataselect/1/query?net=${sta.net}&sta=${sta.code}&loc=*&cha=${ch}&starttime=${t0}&endtime=${t1}&nodata=404`;
+      console.log('Waveform fetch:', sta.net, sta.code, ch);
+      const r=await fetch(proxied(url),{signal:AbortSignal.timeout(20000)});
+      console.log('Waveform response:', sta.net, sta.code, ch, r.status);
+      if(!r.ok)continue;
+      const buf=await r.arrayBuffer();
+      console.log('Waveform bytes:', sta.net, sta.code, ch, buf.byteLength);
+      if(buf.byteLength<128)continue;
+      const raw=parseMSEED(buf);
+      if(!raw||raw.length<10){console.log('MSEED parse failed or too short');continue;}
+      console.log('Decoded samples:', raw.length);
+
+      let s=new Float64Array(raw);
+      const sr=s.length/dur;
+
+      if(doDet){
+        const mean=s.reduce((a,b)=>a+b,0)/s.length;
+        s=s.map(v=>v-mean);
+        let sx=0,sy=0,sxy=0,sxx=0,n=s.length;
+        for(let i=0;i<n;i++){sx+=i;sy+=s[i];sxy+=i*s[i];sxx+=i*i;}
+        const slope=(n*sxy-sx*sy)/(n*sxx-sx*sx)||0;
+        const ic=(sy-slope*sx)/n;
+        s=s.map((v,i)=>v-(slope*i+ic));
+      }
+      if(doTap){
+        const tl=Math.floor(s.length*.05);
+        for(let i=0;i<tl;i++){const f=.5*(1-Math.cos(Math.PI*i/tl));s[i]*=f;s[s.length-1-i]*=f;}
+      }
+      s=zpBP(s,sr,fMin,fMax,corners);
+      if(doNorm){const mx=Math.max(...s.map(Math.abs));if(mx>0)s=s.map(v=>v/mx);}
+
+      // Downsample to max 2000 points
+      if(s.length>2000){
+        const fac=Math.floor(s.length/2000);
+        const o=new Float64Array(Math.floor(s.length/fac));
+        for(let i=0;i<o.length;i++)o[i]=s[i*fac];
+        s=o;
+      }
+      return{net:sta.net,sta:sta.code,dist:sta.dist,channel:ch,samples:s,station:sta};
+    }catch(e){console.log('fetchWave error:', sta.net, sta.code, ch, e.message);}
+  }
+  return null;
+}
+
+// ── MINISEED DECODER ─────────────────────────────────────────
+function parseMSEED(buf){
+  try{
+    const v=new DataView(buf);const all=[];let off=0;
+    while(off+64<=buf.byteLength){
+      const seq=String.fromCharCode(...new Uint8Array(buf,off,6));
+      if(!/^\d{6}$/.test(seq)){off+=512;continue;}
+      const ns=v.getInt16(off+30,false);
+      if(ns<=0){off+=512;continue;}
+      let rl=512;
+      try{
+        let bo=v.getUint16(off+46,false);
+        for(let b=0;b<v.getUint8(off+39)&&bo>0&&bo<300;b++){
+          if(v.getUint16(off+bo,false)===1000){rl=Math.pow(2,v.getUint8(off+bo+6));break;}
+          bo=v.getUint16(off+bo+2,false);
+        }
+      }catch{}
+      const dof=v.getUint16(off+44,false),enc=v.getUint8(off+45),ds2=off+dof;
+      if(dof>0&&dof<rl){
+        try{
+          if(enc===10||enc===11)all.push(...decodeST(buf,ds2,rl-dof,ns,enc));
+          else if(enc===3)for(let i=0;i<ns&&ds2+i*4+4<=off+rl;i++)all.push(v.getInt32(ds2+i*4,false));
+          else if(enc===4)for(let i=0;i<ns&&ds2+i*4+4<=off+rl;i++)all.push(v.getFloat32(ds2+i*4,false));
+          else if(enc===1)for(let i=0;i<ns&&ds2+i*2+2<=off+rl;i++)all.push(v.getInt16(ds2+i*2,false));
+        }catch(e){console.log('decode error enc='+enc,e.message);}
+      }
+      off+=rl;if(rl<=0)break;
+    }
+    return all.length>0?all:null;
+  }catch(e){console.log('parseMSEED error',e.message);return null;}
+}
+
+function decodeST(buf,ds,dl,ns,st){
+  const v=new DataView(buf);const out=[];let last=0;
+  const nf=Math.floor(dl/64);
+  for(let f=0;f<nf&&out.length<ns;f++){
+    const fo=ds+f*64,cn=v.getInt32(fo,false);
+    for(let w=1;w<16&&out.length<ns;w++){
+      const code=(cn>>>(30-(w-1)*2))&0x3,word=v.getInt32(fo+w*4,false);
+      if(f===0&&w===1){last=word;out.push(word);continue;}
+      if(f===0&&w===2)continue;
+      if(st===10){
+        if(code===0)continue;
+        else if(code===1)for(let i=3;i>=0&&out.length<ns;i--){const d=(word>>(i*8))&0xFF;last+=(d>127?d-256:d);out.push(last);}
+        else if(code===2)for(let i=1;i>=0&&out.length<ns;i--){const d=(word>>(i*16))&0xFFFF;last+=(d>32767?d-65536:d);out.push(last);}
+        else{last+=word;out.push(last);}
+      }else{
+        if(code===0)continue;
+        if(code===3){
+          const dn=(word>>>30)&0x3;
+          if(dn===1){const v2=word&0x3FFFFFFF;last+=(v2>(1<<29)?v2-(1<<30):v2);out.push(last);}
+          else for(let i=0;i<5&&out.length<ns;i++){const vv=(word>>(24-i*6))&0x3F;last+=(vv>31?vv-64:vv);out.push(last);}
+        }else{last+=word;out.push(last);}
+      }
+    }
+  }
+  return out;
+}
+
+// ── FILTER ───────────────────────────────────────────────────
+function zpBP(data,sr,flo,fhi,ord){
+  let s=new Float64Array(data);
+  s=lpf(s,sr,fhi,ord);s=hpf(s,sr,flo,ord);
+  s=s.slice().reverse();
+  s=lpf(s,sr,fhi,ord);s=hpf(s,sr,flo,ord);
+  return s.reverse();
+}
+function lpf(data,sr,fc,ord){
+  const passes=Math.ceil(ord/2);let s=new Float64Array(data);
+  const dt=1/sr,RC=1/(2*Math.PI*fc),a=dt/(RC+dt);
+  for(let p=0;p<passes;p++)for(let i=1;i<s.length;i++)s[i]=s[i-1]+a*(s[i]-s[i-1]);
+  return s;
+}
+function hpf(data,sr,fc,ord){
+  const passes=Math.ceil(ord/2);let s=new Float64Array(data);
+  const dt=1/sr,RC=1/(2*Math.PI*fc),a=RC/(RC+dt);
+  for(let p=0;p<passes;p++){const tmp=new Float64Array(s.length);tmp[0]=s[0];for(let i=1;i<s.length;i++)tmp[i]=a*(tmp[i-1]+s[i]-s[i-1]);s=tmp;}
+  return s;
+}
+
+// ── DRAWING ──────────────────────────────────────────────────
+const PC={P:'#38bdf8',S:'#fb923c',PcP:'#c084fc',ScS:'#f59e0b',PP:'#86efac',pP:'#f9a8d4'};
+const PD={P:null,S:null,PcP:[5,4],ScS:[5,4],PP:[7,3],pP:[2,5]};
+
+function draw(){
+  const cv=G('C'),wrap=cv.parentElement,dpr=window.devicePixelRatio||1;
+  const W=wrap.clientWidth,H=wrap.clientHeight;
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';
+  const ctx=cv.getContext('2d');ctx.scale(dpr,dpr);
+
+  const PAD={t:36,r:36,b:58,l:72};
+  const PW=W-PAD.l-PAD.r,PH=H-PAD.t-PAD.b;
+  const wfs=S.wfs;
+  const dMn=Math.min(...wfs.map(w=>w.dist));
+  const dMx=Math.max(...wfs.map(w=>w.dist));
+  const tMx=S.tEnd;
+  const depth=S.eq?S.eq.geometry.coordinates[2]:0;
+  const xo=d=>PAD.l+(d-dMn)/(dMx-dMn)*PW;
+  const yo=t=>PAD.t+t/tMx*PH;
+
+  // Background
+  ctx.fillStyle='#0a0c14';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#0d111a';ctx.fillRect(PAD.l,PAD.t,PW,PH);
+
+  // Grid lines
+  const ds=(dMx-dMn)>50?10:5;
+  ctx.strokeStyle='#1a2235';ctx.lineWidth=.6;
+  for(let d=Math.ceil(dMn/ds)*ds;d<=dMx;d+=ds){ctx.beginPath();ctx.moveTo(xo(d),PAD.t);ctx.lineTo(xo(d),PAD.t+PH);ctx.stroke();}
+  const ts=tMx>600?100:50;
+  for(let t=ts;t<=tMx;t+=ts){ctx.beginPath();ctx.moveTo(PAD.l,yo(t));ctx.lineTo(PAD.l+PW,yo(t));ctx.stroke();}
+
+  ctx.save();ctx.beginPath();ctx.rect(PAD.l,PAD.t,PW,PH);ctx.clip();
+
+  // Traces
+  if(S.view==='section'){
+    const amp=Math.min(
+      (PW/(Math.max(dMx-dMn,1)))*(3.5/Math.max(wfs.length/8,1)),
+      PW/(wfs.length+2)*0.6
+    );
+    wfs.forEach(w=>{
+      if(!w.samples||w.samples.length<4)return;
+      const xc=xo(w.dist),n=w.samples.length;
+      // Positive fill first
+      ctx.beginPath();
+      for(let i=0;i<n;i++){
+        const t=i/n*tMx,y=yo(t),x=xc+w.samples[i]*amp;
+        if(i===0){ctx.moveTo(xc,y);}
+        ctx.lineTo(x,y);
+      }
+      ctx.lineTo(xc,yo(tMx));
+      ctx.closePath();
+      ctx.fillStyle='rgba(56,189,248,0.08)';
+      ctx.fill();
+      // Wiggle line
+      ctx.beginPath();
+      for(let i=0;i<n;i++){
+        const t=i/n*tMx,y=yo(t),x=xc+w.samples[i]*amp;
+        if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);
+      }
+      ctx.strokeStyle='rgba(200,220,240,0.82)';
+      ctx.lineWidth=0.7;
+      ctx.stroke();
+    });
+  }else{
+    wfs.forEach((w,idx)=>{
+      if(!w.samples||w.samples.length<4)return;
+      const n=w.samples.length,hue=(idx/wfs.length)*260;
+      ctx.strokeStyle=`hsla(${hue},75%,68%,0.6)`;ctx.lineWidth=0.8;
+      ctx.beginPath();let first=true;
+      for(let i=0;i<n;i++){
+        const t=i/n*tMx,x=PAD.l+t/tMx*PW,y=PAD.t+PH/2-w.samples[i]*PH*.44;
+        if(first){ctx.moveTo(x,y);first=false;}else ctx.lineTo(x,y);
+      }
+      ctx.stroke();
+    });
+  }
+
+  // Travel time curves
+  Object.keys(S.aw).forEach(ph=>{
+    if(!S.aw[ph])return;
+    ctx.strokeStyle=PC[ph];ctx.lineWidth=2;ctx.setLineDash(PD[ph]||[]);
+    ctx.beginPath();let started=false;
+    for(let d=dMn;d<=dMx;d+=.2){
+      const t=getTT(ph,d,depth);
+      if(!t||t<0||t>tMx){started=false;continue;}
+      const x=xo(d),y=yo(t);
+      if(!started){ctx.moveTo(x,y);started=true;}else ctx.lineTo(x,y);
+    }
+    ctx.stroke();ctx.setLineDash([]);
+    // Label
+    const tr=getTT(ph,dMx,depth);
+    if(tr&&tr>=0&&tr<=tMx){
+      ctx.fillStyle=PC[ph];
+      ctx.font="bold 11px 'Space Mono',monospace";
+      ctx.textAlign='right';
+      ctx.fillText(ph,PAD.l+PW-4,yo(tr)-5);
+    }
+  });
+
+  ctx.restore();
+
+  // Border
+  ctx.strokeStyle='#2d3748';ctx.lineWidth=1;ctx.strokeRect(PAD.l,PAD.t,PW,PH);
+
+  // X axis
+  ctx.fillStyle='#9ca3af';ctx.font="11px 'Space Mono',monospace";ctx.textAlign='center';
+  for(let d=Math.ceil(dMn/ds)*ds;d<=dMx;d+=ds){
+    const x=xo(d);
+    ctx.beginPath();ctx.moveTo(x,PAD.t+PH);ctx.lineTo(x,PAD.t+PH+5);ctx.strokeStyle='#374151';ctx.lineWidth=1;ctx.stroke();
+    ctx.fillText(d+'°',x,PAD.t+PH+18);
+  }
+  ctx.font="13px 'Syne',sans-serif";ctx.fillStyle='#cbd5e1';
+  ctx.fillText('Epicentral Distance (°)',PAD.l+PW/2,H-8);
+
+  // Y axis
+  ctx.textAlign='right';ctx.font="11px 'Space Mono',monospace";ctx.fillStyle='#9ca3af';
+  for(let t=ts;t<=tMx;t+=ts){
+    const y=yo(t);
+    ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l-5,y);ctx.strokeStyle='#374151';ctx.lineWidth=1;ctx.stroke();
+    ctx.fillText(t,PAD.l-8,y+4);
+  }
+  ctx.save();ctx.translate(15,PAD.t+PH/2);ctx.rotate(-Math.PI/2);
+  ctx.font="13px 'Syne',sans-serif";ctx.fillStyle='#cbd5e1';ctx.textAlign='center';
+  ctx.fillText('Time [s] after origin',0,0);ctx.restore();
+
+  // Station tick marks
+  if(S.view==='section'){
+    ctx.strokeStyle='#38bdf8';ctx.lineWidth=1.5;
+    wfs.forEach(w=>{const x=xo(w.dist);ctx.beginPath();ctx.moveTo(x,PAD.t);ctx.lineTo(x,PAD.t-6);ctx.stroke();});
+    if(wfs.length<20){
+      wfs.forEach(w=>{
+        const x=xo(w.dist);
+        ctx.save();ctx.translate(x,PAD.t-8);ctx.rotate(-Math.PI/3);
+        ctx.font="8px 'Space Mono',monospace";ctx.fillStyle='#4b6480';ctx.textAlign='center';
+        ctx.fillText(w.sta,0,0);ctx.restore();
+      });
+    }
+  }
+
+  // Annotation bottom
+  const fm=G('fmin').value,fx=G('fmax').value;
+  ctx.font="9px 'Space Mono',monospace";ctx.fillStyle='#374151';ctx.textAlign='left';
+  ctx.fillText(`BP ${parseFloat(fm).toFixed(2)}–${parseFloat(fx).toFixed(1)} Hz  |  IASP91  |  depth ${parseFloat(depth).toFixed(1)} km  |  ${wfs.length} stations`,PAD.l+3,H-8);
+}
+
+// ── CROSSHAIR ─────────────────────────────────────────────────
+G('C').addEventListener('mousemove',e=>{
+  if(!S.ready||!S.wfs.length)return;
+  const r=G('C').getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+  const PAD={t:36,r:36,b:58,l:72};
+  const PW=r.width-PAD.l-PAD.r;
+  const dMn=Math.min(...S.wfs.map(w=>w.dist)),dMx=Math.max(...S.wfs.map(w=>w.dist));
+  const dist=dMn+(x-PAD.l)/PW*(dMx-dMn);
+  const t=(y-PAD.t)/(r.height-PAD.t-PAD.b)*S.tEnd;
+  if(dist<dMn||dist>dMx){G('xh').classList.add('hidden');return;}
+  const dep=S.eq?S.eq.geometry.coordinates[2]:0;
+  const pt=getTT('P',dist,dep),st=getTT('S',dist,dep);
+  const xh=G('xh');xh.classList.remove('hidden');
+  xh.textContent=`dist: ${dist.toFixed(1)}°  |  t: ${t.toFixed(0)}s  |  P: ${pt?pt.toFixed(0)+'s':'—'}  |  S: ${st?st.toFixed(0)+'s':'—'}`;
+});
+G('C').addEventListener('mouseleave',()=>G('xh').classList.add('hidden'));
+
+// ── EXPORT ────────────────────────────────────────────────────
+function exportPlot(){
+  if(!S.ready)return;
+  const p=S.eq.properties;
+  const name=`seismiclab_M${p.mag.toFixed(1)}_${p.place.replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)}`;
+  const a=document.createElement('a');
+  a.download=name+'.png';a.href=G('C').toDataURL('image/png');a.click();
+}
+
+// ── RESIZE ────────────────────────────────────────────────────
+let rt;
+window.addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(()=>{if(S.ready)draw();},150);});
+</script>
+</body>
+</html>
