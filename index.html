@@ -579,14 +579,14 @@ async function generatePlot(){
   }
 }
 
-function parseStnTxt(txt,eqLat,eqLon,net,base){
+parseStnTxt(txt,eqLat,eqLon,net,IRIS_BASE)
   const out=[];
   txt.split('\n').forEach(l=>{
     if(!l||l.startsWith('#'))return;
     const p=l.split('|');if(p.length<4)return;
     const code=p[1].trim(),lat=parseFloat(p[2]),lon=parseFloat(p[3]);
     if(isNaN(lat)||isNaN(lon))return;
-    out.push({net,code,lat,lon,dist:hav(eqLat,eqLon,lat,lon),base});
+out.push({net,code,lat,lon,dist:hav(eqLat,eqLon,lat,lon),base:IRIS_BASE});
   });
   return out;
 }
